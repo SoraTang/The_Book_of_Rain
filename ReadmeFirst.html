@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>README — The Book of Rain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Styles & Animations */
+        body {
+            background-color: #0a0a0a; /* neutral-950 */
+            color: #d1d5db; /* gray-300 */
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow-x: hidden;
+            selection-background-color: #164e63;
+            selection-color: white;
+        }
+
+        /* Scanline Animation */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .scanline::before {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 255, 255, 0.1);
+            animation: scanline 6s linear infinite;
+            pointer-events: none;
+        }
+
+        /* Grain Effect */
+        .grain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* Glitch Effect Fix */
+        .glitch-wrapper {
+            position: relative;
+            display: inline-block;
+            white-space: nowrap; /* Prevents wrapping causing misalignment */
+        }
+        .glitch-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .glitch-wrapper:hover .glitch-layer.red {
+            opacity: 0.7;
+            animation: glitch-anim-1 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+            color: #ef4444; /* red-500 */
+            transform: translate(-2px, 0);
+            clip-path: inset(10% 0 60% 0);
+        }
+        .glitch-wrapper:hover .glitch-layer.cyan {
+            opacity: 0.7;
+            animation: glitch-anim-2 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) reverse both infinite;
+            color: #06b6d4; /* cyan-500 */
+            transform: translate(2px, 0);
+            clip-path: inset(40% 0 20% 0);
+        }
+        @keyframes glitch-anim-1 {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        @keyframes glitch-anim-2 {
+            0% { transform: translate(0); }
+            20% { transform: translate(2px, -2px); }
+            40% { transform: translate(2px, 2px); }
+            60% { transform: translate(-2px, 2px); }
+            80% { transform: translate(-2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        /* Fade Section Animation */
+        .fade-section {
+            opacity: 0;
+            transform: translateY(2rem);
+            transition: opacity 1s ease-out, transform 1s ease-out;
+        }
+        .fade-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Rain Canvas */
+        #rainCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            mix-blend-mode: screen;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Grain Overlay -->
+    <div class="grain"></div>
+    
+    <!-- Rain Canvas -->
+    <canvas id="rainCanvas"></canvas>
+
+    <!-- Main Content -->
+    <main class="relative z-10 max-w-4xl mx-auto px-6 py-24 md:py-32 flex flex-col gap-32">
+
+        <!-- Header / Intro -->
+        <section class="min-h-[60vh] flex flex-col justify-center items-start border-l border-gray-800 pl-8 md:pl-16 relative">
+            <div class="absolute top-0 left-0 w-[1px] h-full bg-gradient-to-b from-transparent via-cyan-900 to-transparent opacity-50"></div>
+            
+            <div class="mb-4 flex items-center gap-2 text-cyan-500/80 text-xs tracking-[0.2em] uppercase">
+                <i data-lucide="cloud-rain" width="14" height="14"></i>
+                <span>Interactive Zine</span>
+            </div>
+            
+            <!-- Glitch Title -->
+            <div class="glitch-wrapper cursor-pointer group mb-8">
+                <h1 class="relative z-10 text-5xl md:text-8xl font-bold text-gray-100 tracking-tighter font-serif">The Book of Rain</h1>
+                <span class="glitch-layer red text-5xl md:text-8xl font-bold tracking-tighter font-serif">The Book of Rain</span>
+                <span class="glitch-layer cyan text-5xl md:text-8xl font-bold tracking-tighter font-serif">The Book of Rain</span>
+            </div>
+            
+            <p class="text-lg md:text-xl text-gray-400 max-w-xl leading-relaxed">
+                Rain experienced not as weather, but as <span class="text-gray-200 border-b border-gray-700 hover:border-cyan-500 transition-colors cursor-help">cultural memory</span>.
+                <br />
+                A sensory condition. A productive rupture.
+            </p>
+
+            <div class="mt-16 flex flex-col gap-2 text-xs text-gray-600 uppercase tracking-widest animate-pulse">
+                <div class="flex items-center gap-4">
+                    <i data-lucide="move-down" width="14" height="14"></i>
+                    <span>Scroll Slowly</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 01 Project Overview -->
+        <div class="fade-section">
+            <section class="space-y-8 relative">
+                <div class="flex items-center gap-4 mb-8">
+                    <span class="text-4xl font-thin text-gray-800">01</span>
+                    <h2 class="text-2xl text-gray-200 font-light tracking-wide uppercase">Project Overview</h2>
+                </div>
+
+                <div class="prose prose-invert prose-lg text-gray-400 max-w-none">
+                    <p>
+                        This project treats rain as a collective cultural memory and a sensory condition within a Chinese cultural context, intertwined with personal experiences—something felt, anticipated, endured, and restructured through time.
+                    </p>
+                    <p class="mt-6 border-l-2 border-cyan-900 pl-6 italic text-gray-500">
+                        Engaging with Legacy Russell’s <span class="text-gray-300">Glitch Feminism</span>, we frame glitch not as an error to be corrected, but as a productive rupture.
+                    </p>
+                </div>
+                
+                <!-- The Three Acts -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
+                    <!-- Act I -->
+                    <div class="border border-gray-700 bg-gray-900/50 backdrop-blur-sm p-6 rounded-sm hover:border-cyan-500/50 transition-colors duration-500 group">
+                        <div class="flex items-center gap-3 mb-4 text-gray-400 group-hover:text-cyan-400">
+                            <i data-lucide="wind" width="20" height="20"></i>
+                            <span class="text-xs uppercase tracking-widest">Act I</span>
+                        </div>
+                        <h3 class="text-xl font-light text-gray-100 mb-2 font-serif italic">Before the first drop</h3>
+                        <p class="text-sm text-gray-400 leading-relaxed group-hover:text-gray-300">
+                            Glitch appears as a quiet destabilization of everyday order.
+                        </p>
+                    </div>
+                    
+                    <!-- Act II -->
+                    <div class="border border-gray-700 bg-gray-900/50 backdrop-blur-sm p-6 rounded-sm hover:border-cyan-500/50 transition-colors duration-500 group">
+                        <div class="flex items-center gap-3 mb-4 text-gray-400 group-hover:text-cyan-400">
+                            <i data-lucide="zap" width="20" height="20"></i>
+                            <span class="text-xs uppercase tracking-widest">Act II</span>
+                        </div>
+                        <h3 class="text-xl font-light text-gray-100 mb-2 font-serif italic">The Pouring</h3>
+                        <p class="text-sm text-gray-400 leading-relaxed group-hover:text-gray-300">
+                            Glitch becomes the only shelter within a fractured reality.
+                        </p>
+                    </div>
+
+                    <!-- Act III -->
+                    <div class="border border-gray-700 bg-gray-900/50 backdrop-blur-sm p-6 rounded-sm hover:border-cyan-500/50 transition-colors duration-500 group">
+                        <div class="flex items-center gap-3 mb-4 text-gray-400 group-hover:text-cyan-400">
+                            <i data-lucide="cloud-rain" width="20" height="20"></i>
+                            <span class="text-xs uppercase tracking-widest">Act III</span>
+                        </div>
+                        <h3 class="text-xl font-light text-gray-100 mb-2 font-serif italic">Petrichor</h3>
+                        <p class="text-sm text-gray-400 leading-relaxed group-hover:text-gray-300">
+                            Glitch gives way to the emergence of a new order, rather than a return to the old one.
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 02 How to Read -->
+        <div class="fade-section">
+            <section class="space-y-8 border-t border-gray-900 pt-16">
+                <div class="flex items-center gap-4 mb-8">
+                    <span class="text-4xl font-thin text-gray-800">02</span>
+                    <h2 class="text-2xl text-gray-200 font-light tracking-wide uppercase">How to Read & Interact</h2>
+                </div>
+
+                <!-- Removed the 2-column grid to simplify since the right box was removed -->
+                <div class="space-y-8 max-w-2xl">
+                    <div class="group flex gap-4 items-start">
+                        <div class="p-2 bg-gray-900 rounded text-cyan-500 group-hover:text-white transition-colors shrink-0">
+                            <i data-lucide="mouse-pointer" width="20" height="20"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-gray-200 font-medium mb-1">Gentle Interactions</h3>
+                            <p class="text-sm text-gray-500">This zine is designed to be experienced slowly. Please scroll down gradually.</p>
+                            <p class="text-sm text-gray-500">Mouse wheel recommended.</p>
+                            <p class="text-sm text-gray-500 mt-1">Many visual and textual elements are triggered by scroll position, and scrolling too quickly may cause you to miss subtle transitions.</p>
+                        </div>
+                    </div>
+
+                    <div class="group flex gap-4 items-start">
+                        <div class="p-2 bg-gray-900 rounded text-cyan-500 group-hover:text-white transition-colors shrink-0">
+                            <i data-lucide="eye" width="20" height="20"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-gray-200 font-medium mb-1">Discovery</h3>
+                            <p class="text-sm text-gray-500">Multiple interactive components respond differently to user actions. Feel free to experiment.</p>
+                            <p class="text-sm text-gray-500 mt-1">There is no single “correct” way to read the work — discovery and partial visibility are intentional parts of the experience.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 03 How to Open -->
+        <div class="fade-section">
+            <section class="space-y-8 border-t border-gray-900 pt-16 pb-16">
+                <div class="flex items-center gap-4 mb-8">
+                    <span class="text-4xl font-thin text-gray-800">03</span>
+                    <h2 class="text-2xl text-gray-200 font-light tracking-wide uppercase">How to Open the Project</h2>
+                </div>
+
+                <div class="prose prose-invert prose-lg text-gray-400 max-w-none space-y-4">
+                    <p>
+                        Open <span class="text-gray-200 font-mono text-sm bg-gray-900 px-1 py-0.5 rounded">The_Book_of_Rain.html</span> in a modern web browser (Chrome or Edge recommended).
+                    </p>
+                    
+                    <p>
+                        You may also click the buttons on the page to directly enter the book and navigate between chapters.
+                        The <span class="text-gray-200 font-mono text-sm bg-gray-900 px-1 py-0.5 rounded">Resources/</span> folder contains internal pages and media assets used by the project.
+                        You do not need to open or interact with these files directly.
+                    </p>
+
+                    <p class="text-gray-500 text-base italic">
+                        If the project does not open correctly due to browser or local path issues,
+                        I have included a full walkthrough video demonstrating the complete experience from start to finish.
+                    </p>
+                    
+                    <div class="pt-6 border-l-2 border-gray-800 pl-6 mt-8">
+                        <p class="text-gray-300">Thank you for taking the time to experience this work.</p>
+                        <p class="text-sm text-gray-500 mt-2">I recommend viewing it in a quiet environment and allowing the interactions to unfold at their own pace.</p>
+                    </div>
+
+                    <div class="pt-8">
+                         <a href="The_Book_of_Rain.html" class="inline-flex group items-center gap-3 px-6 py-3 bg-gray-900 hover:bg-gray-800 text-gray-200 transition-all rounded border border-gray-800 hover:border-cyan-900/50">
+                             <i data-lucide="book-open" width="16" height="16"></i>
+                             <span>Enter The Book</span>
+                             <i data-lucide="arrow-right" width="14" height="14" class="group-hover:translate-x-1 transition-transform"></i>
+                         </a>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer class="pb-16 text-center text-gray-800 text-xs tracking-widest uppercase">
+            <p>© The Book of Rain Project by Haoyu Tang</p>
+        </footer>
+
+    </main>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Rain Canvas Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('rainCanvas');
+            const ctx = canvas.getContext('2d');
+            let width = window.innerWidth;
+            let height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            const drops = [];
+            const maxDrops = 150;
+
+            class Drop {
+                constructor() {
+                    this.reset();
+                    // Start at random y positions initially to fill screen
+                    this.y = Math.random() * height; 
+                }
+
+                reset() {
+                    this.x = Math.random() * width;
+                    this.y = -Math.random() * 20; // Start just above screen
+                    this.length = Math.random() * 20 + 10;
+                    this.speed = Math.random() * 5 + 2;
+                    this.opacity = Math.random() * 0.5 + 0.1;
+                }
+
+                update() {
+                    this.y += this.speed;
+                    if (this.y > height) {
+                        this.reset();
+                    }
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.x, this.y + this.length);
+                    ctx.strokeStyle = `rgba(174, 194, 224, ${this.opacity})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+
+            for (let i = 0; i < maxDrops; i++) {
+                drops.push(new Drop());
+            }
+
+            const animate = () => {
+                ctx.clearRect(0, 0, width, height);
+                drops.forEach(drop => {
+                    drop.update();
+                    drop.draw();
+                });
+                requestAnimationFrame(animate);
+            };
+
+            animate();
+
+            const handleResize = () => {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+            };
+
+            window.addEventListener('resize', handleResize);
+
+            // Fade In Logic (IntersectionObserver)
+            const fadeElements = document.querySelectorAll('.fade-section');
+            const observerOptions = {
+                threshold: 0.1
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    } else {
+                        // Optional: remove class to fade out when scrolling up
+                        // entry.target.classList.remove('visible');
+                    }
+                });
+            }, observerOptions);
+
+            fadeElements.forEach(el => observer.observe(el));
+        });
+    </script>
+</body>
+</html>

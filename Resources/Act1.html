@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Book of Rain  — Before the first drop</title>
+    <style>
+        /* --- 1. 基础环境设置 (Atmosphere) --- */
+        :root {
+            --bg-base: #aebbc4;      
+            --text-main: #1a1a1a;    /* 墨黑 */
+            --text-sub: #4a5568;     /* 深蓝灰 */
+        }
+
+        html {
+            scroll-behavior: auto; 
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 1100vh; 
+            background-color: var(--bg-base);
+            font-family: 'Songti SC', 'Noto Serif SC', 'Georgia', serif;
+            color: var(--text-main);
+            
+            cursor: none; 
+            
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        body::-webkit-scrollbar { width: 6px; }
+        body::-webkit-scrollbar-track { background: transparent; }
+        body::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.1); border-radius: 3px; }
+
+        /* --- 2. 纹理与光影 --- */
+        
+        #noise {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.06; 
+            z-index: 10;
+            pointer-events: none;
+            filter: invert(1); 
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        /* === 城市剪影层 === */
+        #city-layer {
+            position: fixed;
+            bottom: 0; left: 0;
+            width: 100%; 
+            height: 40vh; /* 占据底部 */
+            z-index: 12; 
+            pointer-events: none;
+            opacity: 0; 
+            transition: opacity 2s ease, transform 2s ease;
+            transform: translateY(50px);
+            
+            background: linear-gradient(to top, rgba(10, 15, 20, 0.9), rgba(20, 30, 40, 0));
+            clip-path: polygon(
+                0% 100%, 
+                0% 80%, 5% 75%, 10% 85%, 15% 60%, 20% 70%, 
+                25% 50%, 30% 65%, 35% 55%, 40% 80%, 45% 40%, 
+                50% 60%, 55% 45%, 60% 75%, 65% 50%, 70% 80%, 
+                75% 60%, 80% 85%, 85% 70%, 90% 90%, 95% 80%, 
+                100% 90%, 100% 100%
+            );
+            filter: blur(8px); 
+        }
+
+        #rain-layer {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 15; 
+            pointer-events: none;
+        }
+
+        #fog-layer {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 20; 
+            pointer-events: none; 
+            opacity: 1;
+            mix-blend-mode: normal;
+        }
+
+        /* --- 3. 排版设计 (Intro Sequence) --- */
+        
+        .cover-section {
+            position: fixed; /* 改为fixed，以便通过JS控制内部元素在卷轴开头 */
+            top: 0; left: 0;
+            width: 100%;
+            height: 100vh; 
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none; /* 让鼠标事件穿透 */
+        }
+
+        /* 标题容器 */
+        .masthead-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 1;
+            will-change: transform, opacity;
+            margin-bottom: 2rem; /* 给下面文字留点空间 */
+        }
+
+        .masthead {
+            font-size: clamp(4rem, 12vw, 10rem);
+            font-weight: 100;
+            letter-spacing: 0.1em;
+            color: transparent;
+            -webkit-text-stroke: 1.5px var(--text-main);
+            text-transform: uppercase;
+            margin: 0;
+            display: flex; 
+        }
+        
+        .masthead span {
+            display: inline-block;
+            will-change: transform, opacity;
+        }
+
+        .en-title {
+            font-family: 'Times New Roman', serif;
+            font-size: clamp(1rem, 2vw, 1.5rem); 
+            letter-spacing: 0.3em;
+            margin-top: 25px;
+            color: var(--text-sub);
+            font-style: italic;
+            font-weight: 400; 
+            opacity: 0.8;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .en-title span {
+            display: inline-block;
+            will-change: transform, opacity;
+            min-width: 0.3em; 
+        }
+
+        /* 核心章节文字 (Morphing Text) - 样式优化 */
+        .chapter-core-container {
+            position: absolute;
+            top: 55%; 
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 900px;
+            text-align: center;
+            display: flex;
+            flex-direction: column; /* 强制两行垂直排列 */
+            gap: 10px; /* 两行之间的间距 */
+            align-items: center;
+        }
+
+        .chapter-line {
+            /* 字体优化：使用更加自然、有衬线的字体组合 */
+            font-family: 'Baskerville', 'Georgia', 'Songti SC', serif; 
+            font-size: clamp(1.4rem, 3vw, 2rem); /* 稍微加大字号 */
+            line-height: 1.6;
+            
+            /* 颜色优化：墨水感深灰，而非纯黑 */
+            color: rgba(40, 44, 52, 0.85); 
+            
+            font-style: italic;
+            font-weight: 400;
+            letter-spacing: 0.03em;
+            
+            /* 视觉特效：微弱的文字阴影和模糊，模拟墨水晕染 */
+            text-shadow: 0 0 1px rgba(0,0,0,0.1), 2px 2px 4px rgba(0,0,0,0.05);
+            
+            white-space: nowrap; /* 防止单行内部自动换行 */
+        }
+
+        .chapter-line .char {
+            display: inline-block;
+            opacity: 0; 
+            will-change: transform, opacity, filter;
+            min-width: 0.3em; 
+        }
+        
+        /* 针对深色模式的微调 */
+        body.dark-mode .chapter-line {
+            color: rgba(220, 220, 220, 0.8);
+            text-shadow: 0 0 5px rgba(255,255,255,0.2);
+        }
+
+        /* --- 4. 自定义光标 --- */
+        #cursor {
+            position: fixed;
+            top: 0; left: 0;
+            width: 30px; height: 30px;
+            pointer-events: none;
+            z-index: 100;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s, border-color 0.3s;
+            border: 1.5px solid rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            backdrop-filter: blur(2px) invert(0.05); 
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.3), 0 4px 10px rgba(0,0,0,0.1); 
+        }
+
+        body.wiping #cursor {
+            width: 50px; 
+            height: 50px;
+            border-color: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.1);
+        }
+
+        body.dark-mode #cursor {
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        /* --- 5. 滚动提示 --- */
+        #scroll-guide {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            letter-spacing: 0.2em;
+            color: var(--text-sub); 
+            opacity: 0; 
+            transition: opacity 1.5s ease;
+            pointer-events: none;
+            z-index: 50;
+            text-shadow: 0 0 5px rgba(255,255,255,0.3);
+        }
+
+        #scroll-guide.visible {
+            opacity: 0.8;
+            animation: pulse 3s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; transform: translateX(-50%) translateY(0); }
+            50% { opacity: 0.4; transform: translateX(-50%) translateY(5px); }
+        }
+
+        /* === 诗句容器 === */
+        .poem-fixed-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; 
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .poem-group {
+            position: absolute; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            width: 100%;
+            max-width: 900px;
+            opacity: 0; 
+            will-change: opacity, transform;
+        }
+
+        .line-zh {
+            font-size: clamp(1.4rem, 3.5vw, 2rem);
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            margin-bottom: 2rem;
+            color: inherit; 
+        }
+
+        .line-en {
+            font-family: 'Times New Roman', serif;
+            font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+            font-style: italic;
+            letter-spacing: 0.05em;
+            font-weight: 400; 
+            color: #2d3436; 
+            line-height: 1.4;
+        }
+
+        body.dark-mode .line-zh {
+            color: #e0e0e0;
+            text-shadow: 0 0 15px rgba(255,255,255,0.15); 
+        }
+        
+        body.dark-mode .line-en {
+            color: #cbd5e0; 
+        }
+        
+        body.dark-mode .masthead {
+            -webkit-text-stroke: 1px #ccc;
+        }
+        body.dark-mode .masthead .en-title {
+            color: #ccc;
+        }
+
+        /* === 6. 复古电视交互区域样式 === */
+        .tv-section {
+            position: absolute;
+            top: 1000vh; /* 放在页面最底部 */
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50; 
+            background: transparent;
+            transform-origin: center center;
+            will-change: transform, top, position;
+        }
+
+        /* 电视机主体 */
+        .retro-tv {
+            position: relative;
+            width: min(80vw, 500px);
+            aspect-ratio: 4/3;
+            background-color: #2b2b2b; 
+            border-radius: 20px;
+            box-shadow: 
+                inset 0 2px 4px rgba(255,255,255,0.1),
+                inset 0 -4px 8px rgba(0,0,0,0.5),      
+                0 20px 50px rgba(0,0,0,0.8);           
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .tv-screen-bezel {
+            flex: 1; 
+            background-color: #000;
+            border-radius: 16px; 
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8); 
+            border: 4px solid #1a1a1a;
+        }
+
+        .tv-content-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.9;
+        }
+        
+        .tv-screen-glass {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 40%, transparent 100%);
+            pointer-events: none;
+            z-index: 10;
+            border-radius: 12px;
+        }
+
+        .tv-controls-panel {
+            width: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 10px 0;
+            background: #222;
+            border-radius: 4px;
+            border-left: 2px solid #1a1a1a;
+        }
+
+        .knob {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #444, #111);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        .knob::after {
+            content: '';
+            position: absolute;
+            top: 5px; left: 50%;
+            width: 2px; height: 10px;
+            background: #fff;
+            transform: translateX(-50%);
+            opacity: 0.5;
+        }
+
+        .speaker-grill {
+            flex: 1;
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 20px;
+        }
+        .grill-line {
+            width: 100%;
+            height: 2px;
+            background-color: #111;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        .tv-feet {
+            position: absolute;
+            bottom: -15px;
+            left: 30px;
+            width: calc(100% - 60px);
+            height: 15px;
+            display: flex;
+            justify-content: space-between;
+            z-index: -1;
+        }
+        .foot {
+            width: 40px;
+            height: 100%;
+            background: #222;
+            transform: skewX(-10deg);
+        }
+        .foot:last-child {
+            transform: skewX(10deg);
+        }
+
+        .retro-tv:active {
+            transform: scale(0.99) rotate(0.5deg);
+        }
+
+        .retro-tv.shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* 放大动画类 */
+        .retro-tv.zoom-in {
+            /* 修改：将动画时间延长到 5s，更缓慢、压抑 */
+            transition: transform 5s cubic-bezier(0.65, 0, 0.35, 1);
+            transform: scale(50) !important; /* 放大50倍，足以填满屏幕 */
+            z-index: 9999;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0) rotate(-1deg); }
+            20%, 80% { transform: translate3d(4px, 0, 0) rotate(1deg); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0) rotate(-1deg); }
+            40%, 60% { transform: translate3d(6px, 0, 0) rotate(1deg); }
+        }
+
+        #tv-static-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 1.5s ease-out;
+            border-radius: 12px;
+        }
+
+        #tv-video {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            display: none;
+            border-radius: 12px;
+        }
+
+        .tv-internal-hint {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(50, 255, 50, 0.7); /* 复古绿 */
+            font-family: 'Courier New', monospace;
+            font-size: clamp(10px, 1.2vw, 14px);
+            z-index: 3;
+            text-shadow: 0 0 5px rgba(50,255,50,0.5);
+            pointer-events: none;
+            letter-spacing: 0.1em;
+            opacity: 0.8;
+            animation: blink 3s infinite;
+        }
+
+        /* 电视机下方的交互提示词 */
+        .tv-instruction {
+            position: absolute;
+            bottom: -90px;
+            left: 0;
+            width: 100%;
+            margin-top: 0; /* Override */
+            font-family: 'Courier New', monospace;
+            /* 修改：颜色改为亮白，增加字体粗细 */
+            color: #eeeeee; 
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            text-align: center;
+            /* 修改：增加强烈的阴影以适应各种背景 */
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+            animation: fadeInOut 4s infinite ease-in-out;
+            transition: opacity 0.5s ease;
+        }
+
+        @keyframes fadeInOut {
+            /* 修改：提高透明度下限，确保始终可见 */
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        /* 下一章按钮 */
+        .next-act-btn {
+            position: absolute;
+            bottom: -90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: transparent;
+            border: 2px solid #fff;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 10px 20px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease, transform 0.2s ease, background 0.2s ease;
+            z-index: 100;
+        }
+
+        .next-act-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-50%) scale(1.05);
+        }
+
+        .next-act-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+            animation: pulseBtn 2s infinite;
+        }
+
+        @keyframes pulseBtn {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 255, 255, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(255, 255, 255, 0.9); }
+        }
+
+        /* 遮罩层，用于最后的转场 */
+        #fade-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10000;
+            transition: opacity 2s ease;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="noise"></div>
+    <div id="fade-overlay"></div>
+    
+    <div id="city-layer"></div>
+
+    <canvas id="rain-layer"></canvas>
+    <canvas id="fog-layer"></canvas>
+
+    <div id="cursor"></div>
+    
+    <div id="scroll-guide">SCROLL TO CONTINUE</div>
+
+    <!-- 
+      Cover Section: 包含标题和核心文字 
+    -->
+    <div class="cover-section">
+        <div class="masthead-container">
+            <h1 class="masthead" id="main-title">
+                <!-- 拆分文字以便独立动画 -->
+                <span>未</span><span>雨</span>
+            </h1>
+            <div class="en-title" id="sub-title">
+                Before the First Drop
+            </div>
+        </div>
+        
+        <!-- 核心章节文字：分为两个独立的行容器 -->
+        <div class="chapter-core-container" id="core-text-container">
+            <div class="chapter-line" id="line-1">Everyday order quietly unravels— the glitch arrives</div>
+            <div class="chapter-line" id="line-2">before the rain does.</div>
+        </div>
+    </div>
+
+    <div class="poem-fixed-layer">
+        
+        <!-- Part 1 -->
+        <div class="poem-group" id="poem-1">
+            <div class="line-zh">前一眼　晴天在空气里流淌</div>
+            <div class="line-en">A first look catches liquid light adrift in gentle flows;</div>
+        </div>
+
+        <div class="poem-group" id="poem-2">
+            <div class="line-zh">后一瞥　风吹云动</div>
+            <div class="line-en">The next meets wind that gathers up the sky and draws it low.</div>
+        </div>
+
+        <div class="poem-group" id="poem-3">
+            <div class="line-zh">阴云蒙住了天空清澈的双眼</div>
+            <div class="line-en">The clouds assemble, breathing soft and slow — <br>Who veils the clear bright eye where sunlight goes?</div>
+        </div>
+
+        <!-- Part 2: 新增诗句组 -->
+        <div class="poem-group" id="poem-4">
+            <div class="line-zh">城市在云里行走 / 窗户在风中喘息</div>
+            <div class="line-en">The city crawls within the deepening shroud,<br>And windows breathe in gusts brief and loud.</div>
+        </div>
+
+        <div class="poem-group" id="poem-5">
+            <div class="line-zh">蚂蚁在祈祷 / 树叶在哀嚎</div>
+            <div class="line-en">Now ants in seams of earth press in to pray,<br>As leaves on every branch are swept to sway.</div>
+        </div>
+
+        <!-- 新增 Poem 6 -->
+        <div class="poem-group" id="poem-6">
+            <div class="line-zh">地上的人们用双腿扛着脑袋 / 东躲西逃</div>
+            <div class="line-en">Carrying heads with shaking legs,<br>people on the planet flee in scattered dregs.</div>
+        </div>
+
+    </div>
+
+    <!-- === 电视交互区域 === -->
+    <div class="tv-section">
+        
+        <!-- 将提示词放入电视容器内，使其跟随缩放 -->
+        <div class="retro-tv">
+            <div class="tv-screen-bezel">
+                <div class="tv-screen-glass"></div>
+                <div class="tv-content-layer">
+                    <canvas id="tv-static-canvas"></canvas>
+                    <!-- 移除 loop，添加 id 用于 JS 控制 -->
+                    <video id="tv-video" src="Rain.mp4" playsinline></video>
+                    <div class="tv-internal-hint">NO SIGNAL</div>
+                </div>
+            </div>
+
+            <div class="tv-controls-panel">
+                <div class="knob" style="transform: rotate(15deg);"></div>
+                <div class="knob" style="transform: rotate(120deg);"></div>
+                <div class="speaker-grill">
+                    <div class="grill-line"></div>
+                    <div class="grill-line"></div>
+                    <div class="grill-line"></div>
+                    <div class="grill-line"></div>
+                    <div class="grill-line"></div>
+                </div>
+            </div>
+
+            <div class="tv-feet">
+                <div class="foot"></div>
+                <div class="foot"></div>
+            </div>
+
+            <div class="tv-instruction">
+                Percussive maintenance required<br>
+                [ Tap to fix ]
+            </div>
+            
+            <button class="next-act-btn">ENTER THE STORM &gt;&gt;</button>
+        </div>
+
+    </div>
+
+    <script>
+        // === 0. 顶部文字动画逻辑 (自动演算版 - 修复版) ===
+        // 将文本拆分为 spans
+        function splitText(element) {
+            const text = element.innerText;
+            element.innerHTML = '';
+            // 简单的按字符拆分
+            text.split('').forEach(char => {
+                const span = document.createElement('span');
+                span.textContent = char;
+                if (char === ' ') span.style.width = '0.3em'; // 保留空格
+                // 为每个字符分配随机的散开参数
+                span.dataset.dx = (Math.random() - 0.5) * 500; // 随机X偏移
+                span.dataset.dy = (Math.random() - 0.5) * 300 - 100; // 随机Y偏移 (倾向于向上)
+                span.dataset.dr = (Math.random() - 0.5) * 90; // 随机旋转
+                element.appendChild(span);
+            });
+            return element.querySelectorAll('span');
+        }
+
+        const mainTitle = document.getElementById('main-title');
+        const subTitle = document.getElementById('sub-title');
+        
+        // 核心文字处理：分开处理两行
+        const line1 = document.getElementById('line-1');
+        const line2 = document.getElementById('line-2');
+        const coreChars = [];
+
+        function initLine(lineElement) {
+            const text = lineElement.textContent;
+            lineElement.textContent = '';
+            text.split('').forEach(char => {
+                const span = document.createElement('span');
+                span.textContent = char;
+                span.className = 'char';
+                if (char === ' ') span.style.width = '0.3em';
+                // 初始状态：模拟从标题散开的随机位置
+                span.dataset.startX = (Math.random() - 0.5) * 100 + 'vw';
+                span.dataset.startY = (Math.random() - 1) * 50 + 'vh';
+                lineElement.appendChild(span);
+                coreChars.push(span);
+            });
+        }
+        
+        initLine(line1);
+        initLine(line2);
+
+        // 拆分副标题
+        const subChars = splitText(subTitle);
+        // 主标题虽然是span，但我们这里直接获取，因为手动写了span
+        const mainChars = mainTitle.querySelectorAll('span');
+        mainChars.forEach(span => {
+            span.dataset.dx = (Math.random() - 0.5) * 600;
+            span.dataset.dy = (Math.random() - 0.5) * 400 - 100; 
+            span.dataset.dr = (Math.random() - 0.5) * 120;
+        });
+
+
+        // === 1. 光标逻辑 ===
+        const cursor = document.getElementById('cursor');
+        
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        let cursorX = mouseX;
+        let cursorY = mouseY;
+
+        function animateCursor() {
+            const dx = mouseX - cursorX;
+            const dy = mouseY - cursorY;
+            cursorX += dx * 0.15; 
+            cursorY += dy * 0.15;
+            cursor.style.left = cursorX + 'px';
+            cursor.style.top = cursorY + 'px';
+            requestAnimationFrame(animateCursor);
+        }
+        animateCursor();
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            wipeFog(mouseX, mouseY);
+        });
+
+        document.addEventListener('mousedown', () => document.body.classList.add('wiping'));
+        document.addEventListener('mouseup', () => document.body.classList.remove('wiping'));
+
+
+        // === 2. 水雾逻辑 ===
+        const fogCanvas = document.getElementById('fog-layer');
+        const fogCtx = fogCanvas.getContext('2d');
+        let width, height; 
+        
+        let wipeCount = 0;
+        let isGuideShown = false;
+
+        function initFog() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            fogCanvas.width = width;
+            fogCanvas.height = height;
+
+            fogCtx.fillStyle = 'rgba(235, 235, 235, 0.96)'; 
+            fogCtx.fillRect(0, 0, width, height);
+            fogCtx.globalCompositeOperation = 'destination-out';
+        }
+
+        function wipeFog(x, y) {
+            const radius = 150; 
+            const gradient = fogCtx.createRadialGradient(x, y, 0, x, y, radius);
+            gradient.addColorStop(0, 'rgba(0,0,0,1)');   
+            gradient.addColorStop(0.5, 'rgba(0,0,0,0.8)'); 
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');    
+            fogCtx.fillStyle = gradient;
+            fogCtx.beginPath();
+            fogCtx.arc(x, y, radius, 0, Math.PI * 2);
+            fogCtx.fill();
+            
+            if (!isGuideShown) {
+                wipeCount++;
+                if (wipeCount > 300) {
+                    showScrollGuide();
+                }
+            }
+        }
+        
+        function showScrollGuide() {
+            isGuideShown = true;
+            document.getElementById('scroll-guide').classList.add('visible');
+        }
+
+
+        // === 3. 凝结粒子逻辑 ===
+        const rainCanvas = document.getElementById('rain-layer');
+        const rainCtx = rainCanvas.getContext('2d');
+        let droplets = [];
+        let maxDroplets = 0; 
+        let globalDepth = 0; 
+        
+        let windForce = 0;      
+        let jitterStrength = 0; 
+        let pulseFactor = 0;    
+
+        class Droplet {
+            constructor() {
+                this.reset();
+                this.y = Math.random() * height; 
+                this.x = Math.random() * width;
+                this.history = []; 
+                this.randomSeed = Math.random() * 100; 
+                this.isSmall = false; 
+            }
+
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height + height; 
+                
+                this.isSmall = Math.random() < (jitterStrength * 0.8);
+                
+                if (this.isSmall) {
+                    this.baseSize = Math.random() * 1 + 0.2; 
+                } else {
+                    this.baseSize = Math.random() * 2 + 0.5; 
+                }
+                
+                this.size = this.baseSize;
+                this.vx = (Math.random() - 0.5) * 0.2;
+                this.vy = -(Math.random() * 0.5 + 0.2); 
+                
+                this.life = 0;
+                this.alpha = 0;
+                this.history = [];
+            }
+
+            update() {
+                this.history.push({x: this.x, y: this.y});
+                if(this.history.length > 10) this.history.shift();
+
+                const dx = mouseX - this.x;
+                const dy = mouseY - this.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist < 300) {
+                    const force = (300 - dist) / 300;
+                    this.vx += (dx / dist) * force * 0.15;
+                    this.vy += (dy / dist) * force * 0.15;
+                } else {
+                    this.vx += (Math.random() - 0.5) * 0.05;
+                    this.vy += (Math.random() - 0.5) * 0.05;
+                    this.vy -= 0.005; 
+                    
+                    if (windForce > 0) {
+                        this.vx += windForce * 0.05;
+                    }
+                    if (jitterStrength > 0) {
+                        this.vx += (Math.random() - 0.5) * jitterStrength * 0.5;
+                        this.vy += (Math.random() - 0.5) * jitterStrength * 0.5;
+                    }
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                const friction = this.isSmall ? 0.94 : 0.96;
+                this.vx *= friction;
+                this.vy *= friction;
+
+                this.life++;
+                if (this.life < 20) this.alpha += 0.02; 
+                
+                if (this.y < -50 || this.x < -width*0.5 || this.x > width * 1.5) {
+                    this.reset();
+                }
+                
+                if (pulseFactor > 0 && this.y > height * 0.6) {
+                    const time = Date.now() * 0.005;
+                    const pulse = Math.sin(time + this.randomSeed) * pulseFactor;
+                    this.size = this.baseSize * (1 + pulse * 0.5);
+                } else {
+                    this.size = this.baseSize;
+                }
+            }
+
+            draw() {
+                const depthScale = 1 + (globalDepth * 1.5);
+                const currentSize = this.isSmall ? this.size : this.size * depthScale;
+                const baseAlpha = Math.min(this.alpha, 0.8);
+
+                if (this.history.length > 1) {
+                    rainCtx.beginPath();
+                    rainCtx.moveTo(this.history[0].x, this.history[0].y);
+                    for (let i = 1; i < this.history.length; i++) {
+                           rainCtx.lineTo(this.history[i].x, this.history[i].y);
+                    }
+                    rainCtx.strokeStyle = `rgba(240, 250, 255, ${baseAlpha * (jitterStrength > 0 ? 0.1 : 0.15)})`;
+                    rainCtx.lineWidth = currentSize;
+                    rainCtx.lineCap = 'round';
+                    rainCtx.stroke();
+                }
+
+                rainCtx.beginPath();
+                rainCtx.arc(this.x, this.y, currentSize, 0, Math.PI * 2);
+                rainCtx.shadowBlur = 10 + (globalDepth * 10); 
+                rainCtx.shadowColor = "rgba(255, 255, 255, 0.8)";
+                rainCtx.fillStyle = `rgba(255, 255, 255, ${baseAlpha})`;
+                rainCtx.fill();
+                rainCtx.shadowBlur = 0;
+            }
+        }
+
+        function initRain() {
+            rainCanvas.width = width;
+            rainCanvas.height = height;
+        }
+
+        function animateRain() {
+            rainCtx.clearRect(0, 0, width, height);
+            
+            if (droplets.length < maxDroplets) {
+                droplets.push(new Droplet());
+            } else if (droplets.length > maxDroplets) {
+                droplets.pop();
+            }
+            
+            droplets.forEach(d => {
+                d.update();
+                d.draw();
+            });
+            requestAnimationFrame(animateRain);
+        }
+
+        window.addEventListener('resize', () => {
+            initFog();
+            initRain();
+        });
+        initFog();
+        initRain();
+        animateRain();
+
+
+        // === 4. 滚动交互 (自动触发 + 滚动控制) ===
+        
+        const poemGroups = [
+            document.getElementById('poem-1'),
+            document.getElementById('poem-2'),
+            document.getElementById('poem-3'),
+            document.getElementById('poem-4'), 
+            document.getElementById('poem-5'),
+            document.getElementById('poem-6') // Added
+        ];
+        
+        const cityLayer = document.getElementById('city-layer');
+
+        // 新增：自动演算动画状态
+        let introAnimationTriggered = false;
+        let introAnimationProgress = 0;
+        let lastTimestamp = 0;
+        let animationFrameId = null;
+
+        // 计算基于滚动的文字淡出因子 (New)
+        function getScrollFadeFactor() {
+            if (window.scrollY < 600) return 1;
+            // 600px -> 900px 淡出
+            const fade = 1 - (window.scrollY - 600) / 300;
+            return Math.max(0, Math.min(1, fade));
+        }
+
+        function updateIntroAnimation(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const delta = timestamp - lastTimestamp;
+            lastTimestamp = timestamp; 
+
+            // 动画速度控制
+            introAnimationProgress += delta * 0.0004; 
+            
+            // 确保不越界，且平滑停止
+            if (introAnimationProgress >= 1.5) {
+                introAnimationProgress = 1.5;
+            }
+
+            // 1. 标题崩解
+            const breakProgress = Math.min(introAnimationProgress / 0.5, 1);
+            
+            mainChars.forEach(span => {
+                const tx = span.dataset.dx * breakProgress;
+                const ty = span.dataset.dy * breakProgress;
+                const tr = span.dataset.dr * breakProgress;
+                const op = 1 - Math.pow(breakProgress, 3);
+                span.style.transform = `translate3d(${tx}px, ${ty}px, 0) rotate(${tr}deg)`;
+                span.style.opacity = op;
+                span.style.filter = `blur(${breakProgress * 10}px)`;
+            });
+
+            subChars.forEach(span => {
+                const tx = span.dataset.dx * breakProgress * 0.8;
+                const ty = span.dataset.dy * breakProgress * 0.8;
+                const op = 1 - Math.pow(breakProgress, 2);
+                span.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
+                span.style.opacity = op;
+            });
+
+            // 2. 核心文字重组
+            const formStart = 0.3;
+            // 获取当前滚动造成的淡出因子
+            const scrollFade = getScrollFadeFactor();
+
+            if (introAnimationProgress > formStart) {
+                const formProgress = Math.min((introAnimationProgress - formStart) / 0.7, 1);
+                
+                coreChars.forEach((span, i) => {
+                    const charProgress = Math.min(Math.max(formProgress * 3.0 - (i * 0.015), 0), 1);
+                    const ease = 1 - Math.pow(1 - charProgress, 4); 
+                    
+                    const currentTx = (1 - ease) * parseFloat(span.dataset.startX);
+                    const currentTy = (1 - ease) * parseFloat(span.dataset.startY);
+                    
+                    // 进场动画
+                    span.style.transform = `translate3d(${currentTx}vw, ${currentTy}vh, 0) scale(${1 + (1-ease)*2})`;
+                    // 透明度受 动画进度(ease) 和 滚动淡出(scrollFade) 共同控制
+                    span.style.opacity = ease * scrollFade; 
+                    span.style.filter = `blur(${(1-ease)*15}px)`;
+                });
+            }
+
+            // 如果动画未完成，继续请求帧
+            if (introAnimationProgress < 1.5) {
+                animationFrameId = requestAnimationFrame(updateIntroAnimation);
+            } else {
+                // 动画结束时，强制所有文字归位 (Safety Lock)
+                // 此时也需要乘以 scrollFade，否则滚动到底部如果动画刚结束字会突然出现
+                const finalFade = getScrollFadeFactor();
+                coreChars.forEach(span => {
+                    span.style.transform = `translate3d(0, 0, 0) scale(1)`;
+                    span.style.opacity = 1 * finalFade; 
+                    span.style.filter = `blur(0)`;
+                });
+                animationFrameId = null;
+            }
+        }
+
+        window.addEventListener('scroll', () => {
+            const scrollY = window.scrollY;
+            const maxScroll = document.body.scrollHeight - window.innerHeight;
+            let progress = Math.min(scrollY / maxScroll, 1);
+            
+            // --- Intro Sequence Trigger ---
+            if (scrollY > 50 && !introAnimationTriggered) {
+                introAnimationTriggered = true;
+                lastTimestamp = 0; 
+                animationFrameId = requestAnimationFrame(updateIntroAnimation);
+            }
+            
+            // 滚动淡出逻辑补丁：如果动画已结束，手动更新透明度
+            if (introAnimationTriggered && !animationFrameId) {
+                 const currentFade = getScrollFadeFactor();
+                 coreChars.forEach(span => span.style.opacity = currentFade);
+            }
+
+            // --- Rest of the scroll logic ---
+
+            globalDepth = progress; 
+            
+            if (scrollY > 50 && isGuideShown) {
+                document.getElementById('scroll-guide').classList.remove('visible');
+            }
+
+            // A. 背景颜色插值 (修改版：非线性黑暗，提前变暗)
+            const startR = 174, startG = 187, startB = 196;
+            
+            // 修改点 2: 提亮最终背景色，以便看清黑色的城市剪影
+            // 原来是 5, 8, 12 (极黑) -> 改为 40, 48, 55 (深蓝灰)
+            const endR = 40, endG = 48, endB = 55; 
+            
+            // 保持较快的变暗速度，配合“阴云”的氛围
+            let colorProgress = Math.min(progress * 2.8, 1); 
+            
+            const currentR = Math.round(startR - (colorProgress * (startR - endR)));
+            const currentG = Math.round(startG - (colorProgress * (startG - endG)));
+            const currentB = Math.round(startB - (colorProgress * (startB - endB)));
+            document.body.style.backgroundColor = `rgb(${currentR}, ${currentG}, ${currentB})`;
+
+            // 修改点 1: 提前触发文字反白 (Dark Mode)
+            // 原来是 0.3 -> 改为 0.2，确保在“后一瞥” (0.22-0.32) 出现时文字已经是浅色
+            if (progress > 0.2) { 
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+
+            // B. 粒子行为 (物理加强版)
+            let targetDroplets = 0;
+            if (progress > 0.05) {
+                targetDroplets = Math.floor(progress * 250); 
+            }
+            
+            // City Phase: 风力加速 (0.55 - 0.70)
+            if (progress > 0.55 && progress < 0.70) {
+                // 大幅增加风力倍数 4 -> 15
+                windForce = (progress - 0.55) * 15; 
+                pulseFactor = Math.min((progress - 0.5) * 3, 1);
+                cityLayer.style.opacity = Math.min((progress - 0.5) * 5, 0.8);
+                cityLayer.style.transform = `translateY(${50 - (progress - 0.5)*200}px)`; 
+            } 
+            // Ants Phase: 混乱加强 (0.70+)
+            else if (progress >= 0.70) {
+                cityLayer.style.opacity = 0.8 - (progress - 0.70) * 2;
+                
+                // 大幅增加混乱倍数 5 -> 20，且提前触发
+                jitterStrength = (progress - 0.70) * 20;
+                
+                windForce = Math.max(windForce - 0.1, 0);
+                targetDroplets += 100;
+            } else {
+                windForce = 0;
+                jitterStrength = 0;
+                pulseFactor = 0;
+                cityLayer.style.opacity = 0;
+                cityLayer.style.transform = `translateY(50px)`;
+            }
+            
+            maxDroplets = targetDroplets;
+
+
+            // C. 诗句流体动画
+            const timeline = [
+                { start: 0.10, peak: 0.15, end: 0.20 }, // 延后一点，给开头动画留空间
+                { start: 0.22, peak: 0.27, end: 0.32 }, 
+                { start: 0.35, peak: 0.42, end: 0.50 }, 
+                
+                { start: 0.55, peak: 0.60, end: 0.68 }, 
+                { start: 0.72, peak: 0.78, end: 0.84 }, // Ants (Shifted earlier)
+                { start: 0.86, peak: 0.92, end: 0.98 }  // People (New)
+            ];
+
+            poemGroups.forEach((group, index) => {
+                if (!timeline[index]) return;
+                const phase = timeline[index];
+                let opacity = 0;
+                let translateX = 0;
+                let translateY = 0; 
+
+                if (progress < phase.start) {
+                    opacity = 0;
+                    translateX = -100; 
+                    translateY = 30;   
+                } else if (progress >= phase.start && progress < phase.peak) {
+                    const t = (progress - phase.start) / (phase.peak - phase.start);
+                    opacity = t; 
+                    const easeOut = 1 - Math.pow(1 - t, 3);
+                    translateX = -100 * (1 - easeOut); 
+                    translateY = 30 * (1 - easeOut);   
+                } else if (progress >= phase.peak && progress < phase.end) {
+                    const t = (progress - phase.peak) / (phase.end - phase.peak);
+                    opacity = 1 - t;
+                    const easeIn = t * t;
+                    translateX = 100 * easeIn; 
+                    translateY = -30 * easeIn; 
+                } else {
+                    opacity = 0;
+                    translateX = 100;
+                    translateY = -30;
+                }
+
+                group.style.opacity = opacity;
+                group.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
+            });
+
+        });
+
+        // === 5. 电视维修与最终转场交互 ===
+        const tvContainer = document.querySelector('.retro-tv'); // 修复变量名
+        const screenBezel = document.querySelector('.tv-screen-bezel');
+        const staticCanvas = document.getElementById('tv-static-canvas');
+        const staticCtx = staticCanvas.getContext('2d');
+        const videoElement = document.getElementById('tv-video');
+        const internalHint = document.querySelector('.tv-internal-hint');
+        const instructionHint = document.querySelector('.tv-instruction');
+        const nextBtn = document.querySelector('.next-act-btn');
+        const fadeOverlay = document.getElementById('fade-overlay');
+        
+        let isTvFixed = false;
+        let slapCount = 0;
+        const requiredSlaps = 3; // 需要拍打3次
+
+        // A. 雪花屏渲染 (Canvas Noise)
+        let staticAnimId;
+        function drawStatic() {
+            if (isTvFixed) return;
+            const w = staticCanvas.width;
+            const h = staticCanvas.height;
+
+            if (w <= 0 || h <= 0) {
+                staticAnimId = requestAnimationFrame(drawStatic);
+                return;
+            }
+
+            // 简单的随机像素填充
+            const idata = staticCtx.createImageData(w, h);
+            const buffer32 = new Uint32Array(idata.data.buffer);
+            const len = buffer32.length;
+
+            for (let i = 0; i < len; i++) {
+                if (Math.random() < 0.5) {
+                    buffer32[i] = 0xff000000; // Black (ABGR)
+                } else {
+                    buffer32[i] = 0xffffffff; // White
+                }
+            }
+            staticCtx.putImageData(idata, 0, 0);
+            staticAnimId = requestAnimationFrame(drawStatic);
+        }
+
+        // 初始化 Canvas 大小
+        function resizeTv() {
+            const rect = screenBezel.getBoundingClientRect();
+            staticCanvas.width = rect.width > 0 ? rect.width / 2 : 1; 
+            staticCanvas.height = rect.height > 0 ? rect.height / 2 : 1;
+        }
+        window.addEventListener('resize', resizeTv);
+        
+        if (tvContainer) {
+            resizeTv();
+            drawStatic();
+        }
+
+        // B. 音频噪音
+        let audioCtx;
+        let noiseNode;
+        let gainNode;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            const bufferSize = audioCtx.sampleRate * 2; // 2秒缓冲
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            noiseNode = audioCtx.createBufferSource();
+            noiseNode.buffer = buffer;
+            noiseNode.loop = true;
+
+            gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.1; // 初始音量很小
+
+            noiseNode.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            noiseNode.start();
+        }
+
+        // C. 拍打交互逻辑
+        tvContainer.addEventListener('click', (e) => {
+            // 如果点击的是下一章按钮，不触发拍打
+            if (e.target.classList.contains('next-act-btn')) return;
+
+            if (isTvFixed) {
+                // 为了方便测试，如果已经修好，再次点击屏幕模拟视频结束（后门）
+                if (videoElement.style.display === 'block') {
+                    // console.log("Simulating video end for testing...");
+                    // videoElement.dispatchEvent(new Event('ended'));
+                }
+                return;
+            };
+
+            // 1. 初始化音频
+            if (!audioCtx) {
+                initAudio();
+                internalHint.textContent = "SIGNAL LOST"; 
+            }
+
+            // 2. 增加拍打计数
+            slapCount++;
+
+            // 3. 视觉反馈：震动
+            tvContainer.classList.remove('shake');
+            void tvContainer.offsetWidth; 
+            tvContainer.classList.add('shake');
+
+            // 4. 音频反馈
+            if (gainNode) {
+                const now = audioCtx.currentTime;
+                gainNode.gain.cancelScheduledValues(now);
+                gainNode.gain.setValueAtTime(0.3, now); 
+                gainNode.gain.exponentialRampToValueAtTime(0.05, now + 0.3); 
+            }
+
+            // 5. 闪烁效果
+            staticCtx.fillStyle = 'black';
+            staticCtx.fillRect(0,0, staticCanvas.width, staticCanvas.height);
+
+            // 6. 检查是否修好
+            if (slapCount >= requiredSlaps) {
+                fixTv();
+            }
+        });
+
+        function fixTv() {
+            isTvFixed = true;
+            cancelAnimationFrame(staticAnimId);
+            
+            // 隐藏雪花，显示视频
+            staticCanvas.style.opacity = '0';
+            videoElement.style.display = 'block';
+            internalHint.style.display = 'none';
+            
+            instructionHint.innerHTML = "Signal Restored<br>[ Turn up the volume. Listen to the shifting world before the rain. ]";
+            
+            // 停止噪音
+            if (gainNode) {
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+                setTimeout(() => {
+                    if(noiseNode) noiseNode.stop();
+                    if(audioCtx) audioCtx.close();
+                }, 500);
+            }
+
+            // 播放视频
+            videoElement.play().catch(e => console.log("Video play failed:", e));
+            
+            // 改变光标
+            document.body.style.cursor = 'auto'; 
+        }
+
+        // === 6. 视频结束与最终转场逻辑 ===
+        
+        // 监听视频播放结束
+        videoElement.addEventListener('ended', () => {
+            // 淡出提示文字 - 修复：停止动画并设置透明度
+            instructionHint.style.animation = 'none';
+            instructionHint.style.opacity = '0';
+            
+            // 淡入按钮
+            setTimeout(() => {
+                nextBtn.classList.add('visible');
+            }, 500);
+        });
+
+        // 按钮点击：开始放大转场
+        nextBtn.addEventListener('click', () => {
+            // 1. 禁用页面滚动，锁定视角
+            document.body.style.overflow = 'hidden';
+            
+            // 2. 隐藏按钮本身
+            nextBtn.style.opacity = '0';
+            nextBtn.style.pointerEvents = 'none';
+
+            // 3. 触发电视机放大动画
+            tvContainer.classList.add('zoom-in');
+            
+            // 4. 背景逐渐变黑 (遮罩层)
+            fadeOverlay.style.opacity = '1';
+            
+            // 5. 延迟跳转 - 修复：增加时长到 2s
+            setTimeout(() => {
+                window.location.href = 'Act2.html';
+            }, 2000); 
+        });
+
+    </script>
+</body>
+</html>
